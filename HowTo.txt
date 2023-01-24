@@ -1,0 +1,37 @@
+go mod init gotorrent-test
+
+go get fyne.io/fyne/v2
+go mod tidy
+
+
+go get github.com/anacrolix/torrent
+///////////////////
+
+    export ANDROID_NDK_HOME=D:\SDK\ndk\19.2.5345600
+    go mod tidy
+    fyne package -os android
+/////////////////
+
+download ndk from:
+https://dl.google.com/android/repository/android-ndk-r25b-linux.zip
+
+export ANDROID_NDK_HOME=~/Android-ndk/android-ndk-r25b
+
+gedit ~/.bashrc
+
+source ~/.bashrc
+
+fyne package -os android -appID com.example.myapp -icon ./Icons/appicon.png
+
+
+fyne package -os android -appID com.test.myapp -icon ./Icons/appicon.png
+
+********************************
+go run -tags mobile .
+
+**********************
+************************
+Wrong !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+export ANDROID_HOME="/root/Android/Sdk"
+export ANDROID_NDK_HOME="/root/Android/Sdk/ndk"
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
