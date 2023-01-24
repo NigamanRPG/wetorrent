@@ -1,0 +1,6 @@
+/Webapp/wetorrent/torrents
+*.exe
+*.o
+*.log
+*.dat
+*.ini
