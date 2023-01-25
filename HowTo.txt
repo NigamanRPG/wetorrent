@@ -30,6 +30,7 @@ fyne package -os android -appID com.test.myapp -icon ./Icons/appicon.png
 go run -tags mobile .
 
 **********************
+gedit .gitignore
 ************************
 Wrong !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 export ANDROID_HOME="/root/Android/Sdk"
