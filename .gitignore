@@ -1,12 +1,5 @@
-/Webapp/wetorrent/torrents
-/Webapp/wetorrent/Items
+/Webapp/wetorrent/torrents/
 *.exe
 *.o
 *.json
-Webapp/wetorrent/Items/Item0/29564.jpg
-Webapp/wetorrent/Items/Item0/Item0.json
-Webapp/wetorrent/Items/Item1/3597.jpg
-Webapp/wetorrent/Items/Item1/36542.jpg
-Webapp/wetorrent/Items/Item1/Item1.json
-Webapp/wetorrent/Items/Item2/1512.jpg
-Webapp/wetorrent/Items/Item2/Item2.json
+
