@@ -1,4 +1,5 @@
-
+/Webapp/wetorrent/torrents/
+/Webapp/wetorrent/Items/
 *.exe
 *.o
 *.json
