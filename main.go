@@ -15,6 +15,7 @@ import (
     "encoding/json"
     "fmt"
     "os"
+	"strconv"
 	"github.com/gorilla/websocket"
 	"github.com/anacrolix/torrent"
 	"github.com/anacrolix/torrent/metainfo"
@@ -32,11 +33,13 @@ var MainTorrent string//magnet
 var MainFile string//filepath
 var AppIsClosing bool
 func main() {
+	InitSearchManager()
 	mainapp= app.New()
 	mainapp.Settings().SetTheme(&myTheme{})
 	mainapp.SetIcon(resourceAppiconPng)
 	mainwin := mainapp.NewWindow("wetorrent")
 	mainwin.Resize(fyne.NewSize(400, 710))
+	
 	go startWebsocket()
 	go startServer()
 	AppIsClosing=false
@@ -140,25 +143,44 @@ func startWebsocket(){
 }
 
 func runCmd(messageArr []string) string{
+	
 	if len(messageArr)==0{
 		fmt.Println("Unkown command")
+		return "Unkown command"
 	}
+	fmt.Println("got request %s", messageArr[0])
 	   switch messageArr[0] {
+	  case "GETSEARCHRESULT":
+		tmpint, cierr := strconv.Atoi(messageArr[1])
+		if cierr!=nil {
+			return "Unkown command"
+		}
+		if tmpint>=len(SearchResults){
+			go MoreSearchResults()
+			return "SEARCHRESULTNOTFOUND"
+		}
+	   return GetSearchResult(tmpint)	
+	  //setSearchQuery
+	  case "SETSEARCHQUERY":
+		PreviewingTorrentMagnetArr=PreviewingTorrentMagnetArr[:0]
+		EmptySearchResults()
+		go SetSearchQuery(messageArr[1])	
 	    case "SETMAINTORRENT":
-		fmt.Println("got cmd SYNCMAINTORRENT")
+		fmt.Println("got cmd SETMAINTORRENT")
 		//
-		go SetMainTorrent(messageArr[1])
+		//go SetMainTorrent(messageArr[1],messageArr[2],messageArr[3])
+		SetMainTorrent(messageArr[1])
 		if len(messageArr)>2{
 			SetMainFile(messageArr[2])
 		}
 	    case "SETMAINFILE":
-		fmt.Println("got cmd SYNCMAINFILE")
+		fmt.Println("got cmd SETMAINFILE")
 		//
 		SetMainFile(messageArr[1])
 	    case "ADDSAVEDITEM":
 		fmt.Println("got cmd ADDSAVEDITEM")
 		//
-		AddSavedItem(messageArr[1],messageArr[2])
+		AddSavedItem(messageArr[1],messageArr[2],messageArr[3],messageArr[4])
 	    case "REMOVESAVEDITEM":
 		fmt.Println("got cmd REMOVESAVEDITEM")
 		//
@@ -207,8 +229,9 @@ func initmainclient() {
 }
 func SetMainFile(tmpfilepath string){
 	MainFile=tmpfilepath
-	//Prioritize(MainTorrent,tmpfilepath)
+	Prioritize(MainTorrent,tmpfilepath)
 }
+//func SetMainTorrent(tmpname string,tmpdescription string,magnet string){
 func SetMainTorrent(magnet string){
 	if (!IsMainTorrent(magnet))&&(!IsSavedItemWithMagnet(magnet)){
 		MainTorrent=magnet
@@ -219,10 +242,10 @@ func SetMainTorrent(magnet string){
 				}
 				time.Sleep(1 * time.Second)
 			}
-		addtorrent(magnet)
+		//addtorrent(tmpname,tmpdescription,magnet)
 	}
 }
-func addtorrent(tmpmagneturi string) {
+func addtorrent(tmpname string,tmpdescription string,tmpmagneturi string) {
 /*
 	tmpmagnet,perr:=metainfo.ParseMagnetUri(tmpmagneturi)
 	//_=perr
@@ -273,14 +296,72 @@ func addtorrent(tmpmagneturi string) {
 	//selectedfilepath:="[TorrentCouch.com].Tom.Clancys.Jack.Ryan.S01.Complete.720p.WEB-DL.x264.[4.3GB].[MP4].[Season.1.Full]/[TorrentCouch.com].Tom.Clancys.Jack.Ryan.S01E04.720p.WEB-DL.x264.mp4"
 	//Prioritize(tmpmagneturi,selectedfilepath)
 	//
+	files:=t.Files()
+		tmppreviewfile:=""
+		tmppreviewfilesize:=int64(0)
+		//tmppreviewfilei:=0
+		for _, filei := range files {
+			if ((filei.Length()>tmppreviewfilesize)&&(strings.Contains(filei.Path(), ".mp4"))){
+				tmppreviewfile=filei.Path()
+				//tmppreviewfilei=index
+			}
+		}
+
+
+		for _, filei := range files {
+			//fmt.Printf("**file %d path %s progress %d %% \n", i,filei.Path(), filei.BytesCompleted()*100/filei.Length())
+			/*			
+			if filepath==filei.Path() {
+				filei.SetPriority(torrent.PiecePriorityNormal)
+			} else {
+				filei.SetPriority(torrent.PiecePriorityNone)
+			}*/
+			//filei.SetPriority(torrent.PiecePriorityNone)
+			//if ((filei.Length()>tmppreviewfilesize)&&(strings.Contains(filei.Path(), ".mp4"))){
+			if tmppreviewfile==filei.Path(){
+				//tmppreviewfile=filei.Path()
+				//////////////////////////////////////
+				
+				//lastprioritizedpiece:=CustomMax(int((filei.EndPieceIndex()-filei.BeginPieceIndex())/10)+int(filei.BeginPieceIndex()),int(filei.EndPieceIndex()))
+
+				firstprioritizedpiece:=int(filei.BeginPieceIndex())
+				lastprioritizedpiece:=CustomMin(firstprioritizedpiece+20,int(filei.EndPieceIndex()))
+				//for i :=firstprioritizedpiece; i < lastprioritizedpiece; i++ {
+				//	t.Piece(i).SetPriority(torrent.PiecePriorityHigh)
+				//}
+				//for i :=lastprioritizedpiece; i < int(filei.EndPieceIndex()); i++ {
+				//	t.Piece(i).SetPriority(torrent.PiecePriorityNone)
+				//}
+				t.DownloadPieces(firstprioritizedpiece,lastprioritizedpiece)
+				t.CancelPieces(lastprioritizedpiece,filei.EndPieceIndex())
+				
+				//////////////////////////////////////
+				//filei.SetPriority(torrent.PiecePriorityNone)
+
+			} else {
+				filei.SetPriority(torrent.PiecePriorityNone)
+			}
+
+			/////////t.CancelPieces(filei.BeginPieceIndex(),filei.EndPieceIndex())
+		}
+
+	//if tmppreviewfile==""{
+	//	return
+	//}
+	//Prioritize(tmpmagneturi,tmppreviewfile)
+	AddPreviewingTorrent(tmpmagneturi)
+	//time.Sleep(60 * time.Second)
+	AddSearchResultItem(tmpname,tmpdescription,tmpmagneturi,tmppreviewfile)
+	
 	for  {
-		Prioritize(tmpmagneturi,MainFile)
+		//Prioritize(tmpmagneturi,MainFile)
 		//DisplayTorrentInfo(tmpmagneturi)
-		if (!IsSavedItemWithMagnet(tmpmagneturi))&&(!IsMainTorrent(tmpmagneturi)){
+		if (!IsSavedItemWithMagnet(tmpmagneturi))&&(!IsMainTorrent(tmpmagneturi))&&(!IsPreviewingTorrent(tmpmagneturi)){
 			log.Println("Torrent removed",tmpmagneturi)
 			t.Drop()
 			return
 		}
+		//if files[tmppreviewfilei]
 		time.Sleep(8 * time.Second)
 	}
 
@@ -301,10 +382,10 @@ func DisplayTorrentInfo(tmpmagneturi string){
 		fmt.Printf("***\n")
 
 }*/
-func getIsSavedItemResponse(tmpitempath string)string{
-	var tmpreturnstring="ISSAVEDITEM*"+tmpitempath
+func getIsSavedItemResponse(tmpitemmagnet string)string{
+	var tmpreturnstring="ISSAVEDITEM*"+tmpitemmagnet
 	
-	if IsSavedItem(tmpitempath){
+	if IsSavedItemWithMagnet(tmpitemmagnet){
 		tmpreturnstring+="*TRUE"
 	} else {
 		tmpreturnstring+="*FALSE"
@@ -414,11 +495,57 @@ func removefromslice(slice []string, s string) []string {
 */
 type SettingsType struct {
 	LocalHostPort int
-	SavedItems []SavedItemType
+	SavedItems []ItemType
 }
 
 var Settings SettingsType
+type ItemType struct {
+	//Path string
+	Name string
+	Description string
+ 	Magnet string
+	PreviewFile string
+}
+var PreviewingTorrentMagnetArr []string
+var SearchResults []ItemType
+func SearchResultsFull() bool{
+	if len(SearchResults)>5 {
+		return true	
+	}
+	return false
+}
+func AddSearchResultItem(tmpname string,tmpdescription string,tmpmagneturi string,tmppreviewfile string){
+	NewItem:=new(ItemType)
+	NewItem.Name=tmpname
+	NewItem.Description=tmpdescription
+	NewItem.Magnet=tmpmagneturi
+	NewItem.PreviewFile=tmppreviewfile
+	SearchResults=append(SearchResults,*NewItem)
 
+}
+func GetSearchResult(index int) string{
+	var tmpsearchresultstring="SEARCHRESULT"
+	if len(SearchResults)<=index{
+		return "NOSEARCHRESULTFOUND"
+	}
+	//for i := 0; i <len(SearchResults) ; i++ {
+		tmpsearchresultstring+="*"+SearchResults[index].Name
+		tmpsearchresultstring+="*"+SearchResults[index].Description
+		tmpsearchresultstring+="*"+SearchResults[index].Magnet
+		tmpsearchresultstring+="*"+SearchResults[index].PreviewFile
+	//}	
+/*	
+	if len(SearchResults)==1{
+		EmptySearchResults()
+	} else {
+		SearchResults=SearchResults[1:]
+	}
+*/
+	return tmpsearchresultstring
+}
+func EmptySearchResults(){
+	SearchResults=SearchResults[:0]
+}
 func LoadDefaultSettings(){
 	Settings.LocalHostPort=666
 	
@@ -462,10 +589,20 @@ func SaveSettings(){
 
 }
 /////////////////////////////////
-type SavedItemType struct {
-	Path string
- 	Magnet string
+//PreviewingTorrentMagnetArr
+func AddPreviewingTorrent(tmpmagnet string){
+	PreviewingTorrentMagnetArr=append(PreviewingTorrentMagnetArr,tmpmagnet)
 }
+func IsPreviewingTorrent(magnet string) bool{
+	for _, tmpe:= range PreviewingTorrentMagnetArr {
+		if tmpe==magnet {
+    			return true
+		}
+	}
+	return false
+}
+/////////////////////////////////
+
 //var SavedItems []SavedItemType
 func IsSavedItemWithMagnet(magnet string) bool{
 	for _, tmpe:= range Settings.SavedItems {
@@ -475,6 +612,7 @@ func IsSavedItemWithMagnet(magnet string) bool{
 	}
 	return false
 }
+/*
 func IsSavedItem(itempath string) bool{
 	for _, tmpe:= range Settings.SavedItems {
 		if tmpe.Path==itempath {
@@ -483,20 +621,24 @@ func IsSavedItem(itempath string) bool{
 	}
 	return false
 }
-func AddSavedItem(itempath string,magnet string){
-	var tmpsaveditem SavedItemType
-	tmpsaveditem.Path=itempath
-	tmpsaveditem.Magnet=magnet
+*/
+func AddSavedItem(itemname string,itemdescription string,itemmagnet string,itempreviewfile string){
+	var tmpsaveditem ItemType
+	//tmpsaveditem.Path=itempath
+	tmpsaveditem.Name=itemname
+	tmpsaveditem.Description=itemdescription
+	tmpsaveditem.Magnet=itemmagnet
+	tmpsaveditem.PreviewFile=itempreviewfile
 
 	Settings.SavedItems=append(Settings.SavedItems,tmpsaveditem)
 }
-func RemoveSavedItem(itempath string){
+func RemoveSavedItem(itemmagnet string){
 
-	Settings.SavedItems=removefromslice(Settings.SavedItems,itempath)
+	Settings.SavedItems=removefromsaveditems(Settings.SavedItems,itemmagnet)
 }
-func removefromslice(slice []SavedItemType, itempath string) []SavedItemType {
+func removefromsaveditems(slice []ItemType, itemmagnet string) []ItemType {
 	for i, tmpe:= range slice {
-		if tmpe.Path==itempath {
+		if tmpe.Magnet==itemmagnet {
     			return append(slice[:i], slice[i+1:]...)
 		}
 	}
@@ -504,4 +646,11 @@ func removefromslice(slice []SavedItemType, itempath string) []SavedItemType {
 }
 
 
+func CustomMin(i int,j int) int {
+	if i>j {
+		return j
+	} else {
+		return i
+	}
 
+}

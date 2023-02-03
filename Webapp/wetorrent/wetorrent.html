@@ -47,22 +47,39 @@
 <script>
 
     let TorrentInfo=[]
-    let MainItemObj={name:'',channelname:'',description:'',magnet:'',imgpatharray:[],videofilepatharray:[]}
+    let MainItemObj={name:'',channelname:'',description:'',magnet:'',previewfile:'',videofilepatharray:[]}
 	let MainItemIsSaved=false
 let mainfile=''
-let MainItemPath=''
+let NbSearchResults=0
+//let MainItemPath=''
     var webappsocket = new WebSocket("ws://localhost:8080/websocket");
+	let webappsocketstatus=false
+///////////////////////////////
+
+
+let searchtermelement=document.getElementById("searchTerm-id")
+searchtermelement.addEventListener("keyup", function (e) {
+    if (e.key === 'Enter' || e.keyCode === 13) {
+        searchRequest()
+    }
+});
+
+//////////////////////////////
+
+
 //
     webappsocket.onclose = function () {
       //output.innerHTML += "Status: Connected\n";
 	window.close();
     };
 //
-/*
+
     webappsocket.onopen = function () {
-      output.innerHTML += "Status: Connected\n";
+      //output.innerHTML += "Status: Connected\n";
+	webappsocketstatus=true
+	searchRequest()
     };
-*/
+
     webappsocket.onmessage = function (e) {
       //output.innerHTML += "\nServer: " + e.data + "\n";
 	tmpstring=e.data
@@ -86,7 +103,7 @@ let MainItemPath=''
 	}
 	//
 	if (tmpArray[0]=='REQUESTISSAVEDITEM'){
-		if (tmpArray[1]==MainItemPath){
+		if (tmpArray[1]==MainItemObj.magnet){
 			if (tmpArray[2]=='TRUE'){
 			 	MainItemIsSaved=true
 			} else {
@@ -96,26 +113,42 @@ let MainItemPath=''
 		}
 
 	}
+	if (tmpArray[0]=='SEARCHRESULT'){
+		//let tmpindex=parseInt("10")
+		let tmpitem={name:tmpArray[1],channelname:'',description:tmpArray[2],magnet:tmpArray[3],previewfile:tmpArray[4],videofilepatharray:[]}
+		createItem(tmpitem,'')
+		NbSearchResults++
+	}
 	console.log("*******",TorrentInfo[tmpArray[1]])
     };
 
 
 homeRequest()
 
-searchRequest()
+
 
 	setInterval(function(){
 			requestTorrentInfo()
 			refreshDisplayCurrentTorrent()
+
 			/////////////////
 			//refreshDisplaySavedTorrents()
 			//
 			//refreshContentvideoCurrentTime()  
 	 }, 4000);
+	setInterval(function(){
+			refreshSearchResults()
+	 }, 4000);
+function webappsocketSend(text){
+	if (webappsocketstatus) {
+		webappsocket.send(text)
+	}
 
+
+}
 function getNbItemFiles(){
 	console.log('3')
-	return 3
+	return 25
 }
 function homeRequest(){
 	//document.getElementById('itemcontent').remove()
@@ -128,17 +161,23 @@ function homeRequest(){
 	//createItem()
 }
 function searchRequest() {
+	NbSearchResults=0
 	//document.getElementById('itemboard-id').setAttribute("style", "width:70%;");
-	document.getElementById("itemboard-id").style.display = "none"; 
-
+	document.getElementById("itemboard-id").style.display = "none"; //searchTerm-id
+	let tmpsearchtext=document.getElementById("searchTerm-id").value
+	document.getElementById("searchgallery").innerHTML=''
+	webappsocketSend('SETSEARCHQUERY*'+tmpsearchtext);
+/*
 	for (let itemi=0;itemi<getNbItemFiles();itemi++){
 		searchItem(itemi)
 	}
-
+*/
 	
 }
+/*
 function searchItem(i) {
 	let itempath='Items/Item'+i.toString()+'/Item'+i.toString()+'.json'
+
 	fetch(itempath)
 	.then(response => response.json())
 	//.then(obj => filterItem(obj))
@@ -146,39 +185,63 @@ function searchItem(i) {
 	.catch((error) => {
 	    console.error('Error:', error);
 	});
+
+}*/
+function refreshSearchResults(){
+	if (NbSearchResults<15){
+	webappsocketSend('GETSEARCHRESULT*'+NbSearchResults.toString());
+	}
+	//Get even more items when bottom reached
 }
 function createItem(itemobj,itempath) {
 console.log('createItem',itemobj,itempath)
 //var itemobj={magnet:'',description:'cool desc',name:'cool name***************************',imgpatharray:['123.jpeg','2.jpg','3.jpg','4.jpg','5.jpg']}
 //var itempath=
   var h1 = document.createElement('div');
-  var img1=document.createElement('img');
-  let mainimgpathindex=Math.floor(itemobj.imgpatharray.length*Math.random())
-  let mainimgpath=itemobj.imgpatharray[mainimgpathindex]//itemobj.imgpatharray[0]
-  img1.setAttribute('src', mainimgpath);
+  //var img1=document.createElement('img');
+  //let mainimgpathindex=Math.floor(itemobj.imgpatharray.length*Math.random())
+  //let mainimgpath=itemobj.imgpatharray[mainimgpathindex]//itemobj.imgpatharray[0]
+  //img1.setAttribute('src', mainimgpath);
   //img1.setAttribute('width', '100%');
-  img1.setAttribute('class', 'itemimgclass');
+  //img1.setAttribute('class', 'itemimgclass');
   //img1.setAttribute("style", "height:40vh;  margin-left: auto;margin-right: auto;display: block;");//overflow: hidden;display: block;
-  for (let i=0;i<itemobj.imgpatharray.length;i++){
-  img1.setAttribute("data-value-imgpatharray"+i.toString(),itemobj.imgpatharray[i])
-  }
-  img1.setAttribute("data-value-imgpatharraylength",itemobj.imgpatharray.length)
-  h1.appendChild(img1);
+  //for (let i=0;i<itemobj.imgpatharray.length;i++){
+  //img1.setAttribute("data-value-imgpatharray"+i.toString(),itemobj.imgpatharray[i])
+  //}
+  //img1.setAttribute("data-value-imgpatharraylength",itemobj.imgpatharray.length)
+  //h1.appendChild(img1);
 
+
+
+///////////////////////////////////////
+const video = document.createElement('video');
+// Use local file
+video.src = 'http://localhost:8080/wetorrent/torrents/'+itemobj.previewfile//'video.mp4';
+video.autoplay = true
+video.controls = true;
+video.muted = true;
+//video.height = 240; // in px
+//video.width = 320; // in px
+video.setAttribute('width', '100%');
+h1.appendChild(video);
+///////////////////////////////////////
   var desc1=document.createElement('p');
   desc1.textContent = itemobj.name
   desc1.setAttribute("style", "color: white; ");
+  desc1.onclick = function() {loadItem(itemobj,itempath);};
   h1.append(desc1);
   h1.setAttribute('class', 'itemclass');
-  h1.onclick = function() {loadItem(itemobj,itempath);};
+  //h1.onclick = function() {loadItem(itemobj,itempath);};
 
-	h1.addEventListener("mouseover", function(){  //pointerover
+	h1.addEventListener("pointerover", function(){  //pointerover
 	   this.setAttribute("style", "background-color:gray;")
 		//console.log('**',itemobj)
-
+ //h1.childNodes[0]..pause()
+ h1.childNodes[0].load();
+  h1.childNodes[0].play();
 	}, false);
 
-	h1.addEventListener("mouseout", function(){  //pointerout
+	h1.addEventListener("pointerout", function(){  //pointerout
 	   this.setAttribute("style", "background-color:black;")
 	   //h1.childNodes[0].src=this.childNodes[0].getAttribute("data-value-imgpatharray0")
 	}, false);
@@ -270,10 +333,10 @@ function displayMainItemSaveButton(){
 	document.getElementById("savebutton-id").append(b1)
 }
 
-function loadItem(itemobj,itempath){// 
+function loadItem(itemobj){// 
 	console.log('**** loading',itemobj)
 	MainItemObj=itemobj
-	MainItemPath=itempath
+	//MainItemPath=itempath
 	showMainItem()
 }
 function showMainItem(){
@@ -283,7 +346,7 @@ function showMainItem(){
 	MainItemIsSaved=false//=getItemIsSavedState(MainItemPath)
 	console.log('MainItemIsSaved',MainItemIsSaved)
 	displayMainItemSaveButton()
-	setMainfile(MainItemObj.videofilepatharray[0])
+	setMainfile(MainItemObj.previewfile)
 	//removeCurrentTorrent()
 	syncTorrent(MainItemObj.magnet)
 	document.getElementById("itemboard-id").style.display = "inline";
@@ -297,9 +360,9 @@ mainfile=filepath
 
 console.log('LOADING VIDEO CONTENT',filepath)
 document.getElementById("contentvideo-id").setAttribute('src','http://localhost:8080/wetorrent/torrents/'+filepath)
-setPrioritizedTime(0.0,filepath)
+setMainfilePrioritizedTime(0.0,filepath)
 document.getElementById("contentvideo-id").setAttribute('type','video/mp4')
-document.getElementById("contentvideo-id").setAttribute('poster',MainItemObj.imgpatharray[0])
+document.getElementById("contentvideo-id").setAttribute('poster','http://localhost:8080/wetorrent/torrents/poster.png')
 }
 
 //////////////
@@ -345,7 +408,7 @@ function refreshDisplayCurrentTorrent(){
 			}
 			//console.log('videofilepatharray',MainItemObj.videofilepatharray)
 			document.getElementById("itemcontentname-id").innerText=MainItemObj.name+' Peers '+ torrentinfo.numPeers//torrentinfo.name//
-			if (MainItemObj.channelname!=undefined){
+			if ((MainItemObj.channelname!=undefined)&&(MainItemObj.channelname!='')){
 				document.getElementById("channelname-id").innerText='@'+MainItemObj.channelname
 			}
 			//document.getElementById("itemcontentconnection-id").innerText=' ↓ '+ prettyBytes(torrentinfo.downloadSpeed) + '/s'+' ↑ '+ prettyBytes(torrentinfo.uploadSpeed) + '/s'+' Peers '+ torrentinfo.numPeers +tmpItemState
@@ -374,24 +437,25 @@ function refreshDisplayCurrentTorrent(){
 /////////////////////////////////////////////
     function syncTorrent(tmpmagnet) {
 	//let tmpmagnet="magnet:?xt=urn:btih:D7A46713EAEE18C746B3254B7D1492A50FD9D6CE&dn=The+Matrix+%281999%29+%5B1080p%5D+%5BYTS.MX%5D&tr=udp%3A%2F%2Fglotorrents.pw%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.openbittorrent.com%3A80&tr=udp%3A%2F%2Ftracker.coppersurfer.tk%3A6969&tr=udp%3A%2F%2Fp4p.arenabg.ch%3A1337&tr=udp%3A%2F%2Ftracker.internetwarriors.net%3A1337"
-      webappsocket.send('SETMAINTORRENT*'+tmpmagnet);
+      webappsocketSend('SETMAINTORRENT*'+tmpmagnet);
  
     }
 function requestTorrentInfo(){
 	if (MainItemObj.magnet!=''){
-	webappsocket.send('REQUESTTORRENTINFO*'+MainItemObj.magnet);
+	webappsocketSend('REQUESTTORRENTINFO*'+MainItemObj.magnet);
 	}
 }
 function requestIsSavedItem(itempath){
 	
-	webappsocket.send('REQUESTISSAVEDITEM*'+itempath);
+	webappsocketSend('REQUESTISSAVEDITEM*'+itempath);
 
 }
-function setPrioritizedTime(timepourcentage,tmpfilepath){
+function setMainfilePrioritizedTime(timepourcentage,tmpfilepath){
 
 
-	webappsocket.send('SETMAINFILE*'+tmpfilepath);
+	webappsocketSend('SETMAINFILE*'+tmpfilepath);
 }
+
 /*
 window.onscroll = function(ev) {
     if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight) {

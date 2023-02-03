@@ -1,3 +1,5 @@
+Enjoy video torrents in a a whole new way
+
 ## Screenshots
 
 <p float="left">
