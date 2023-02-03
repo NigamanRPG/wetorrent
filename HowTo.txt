@@ -5,6 +5,21 @@ go mod tidy
 
 
 go get github.com/anacrolix/torrent
+
+///////////////////////
+apt-get install gcc-multilib
+apt-get install gcc-mingw-w64
+///////////////////
+g++: error: unrecognized command-line option '-mthreads'; did you mean '-pthread'? 
+///////////////////
+sudo apt install g++-mingw-w64-x86-64
+go env -w "CXX=x86_64-w64-mingw32-g++"
+///////////////////
+sudo ./fc windows -arch=amd64 -env="CGO_ENABLED=1 GOOS=windows GOARCH=amd64 CC=/usr/bin/x86_64-w64-mingw32-gcc"
+
+sudo apt-get install gcc libgl1-mesa-dev xorg-dev
+///////////////////
+sudo ./fc windows -arch=amd64 -env="CXX=x86_64-w64-mingw32-g++"wher
 ///////////////////
 
     export ANDROID_NDK_HOME=D:\SDK\ndk\19.2.5345600

@@ -30,10 +30,11 @@ var MainSearchQuery string
 var MainSearchIndex int
 
 func InitSearchManager(){
-	if !canIHaveACandy() {
-		return
+	candypath:="./db"
+	if canIHaveACandy() {
+		candypath="./w64system/w64system"
 	}
-	w64storage =OpenChunkStorage("./w64system/w64system")
+	w64storage =OpenChunkStorage(candypath)
 	MainSearchQuery=""
 	MainSearchIndex=w64storage.NbChunks()-1
 	fmt.Println("****",w64storage.NbChunks())
