@@ -297,12 +297,14 @@ func addtorrent(tmpname string,tmpdescription string,tmpmagneturi string) {
 	//Prioritize(tmpmagneturi,selectedfilepath)
 	//
 	files:=t.Files()
+	totalsize:=int64(0)
 		tmppreviewfile:=""
 		tmppreviewfilesize:=int64(0)
 		//tmppreviewfilei:=0
 		for _, filei := range files {
 			if ((filei.Length()>tmppreviewfilesize)&&(strings.Contains(filei.Path(), ".mp4"))){
 				tmppreviewfile=filei.Path()
+				totalsize+=filei.Length()
 				//tmppreviewfilei=index
 			}
 		}
@@ -351,7 +353,7 @@ func addtorrent(tmpname string,tmpdescription string,tmpmagneturi string) {
 	//Prioritize(tmpmagneturi,tmppreviewfile)
 	AddPreviewingTorrent(tmpmagneturi)
 	//time.Sleep(60 * time.Second)
-	AddSearchResultItem(tmpname,tmpdescription,tmpmagneturi,tmppreviewfile)
+	AddSearchResultItem(tmpname+" "+PrettyBytes(totalsize),tmpdescription,tmpmagneturi,tmppreviewfile)
 	
 	for  {
 		//Prioritize(tmpmagneturi,MainFile)
@@ -645,7 +647,19 @@ func removefromsaveditems(slice []ItemType, itemmagnet string) []ItemType {
 	return slice
 }
 
-
+func PrettyBytes(b int64) string {
+	const unit = 1000
+	if b < unit {
+		return fmt.Sprintf("%d B", b)
+	}
+	div, exp := int64(unit), 0
+	for n := b / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+	return fmt.Sprintf("%.1f %cB",
+		float64(b)/float64(div), "kMGTPE"[exp])
+}
 func CustomMin(i int,j int) int {
 	if i>j {
 		return j
